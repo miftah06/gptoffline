@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flask App</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5">Flask Application</h1>
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <h4>Generate Image from Text</h4>
+                <form id="generateForm">
+                    <div class="form-group">
+                        <label for="query">Enter your prompt:</label>
+                        <input type="text" class="form-control" id="query" placeholder="Enter prompt">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Generate</button>
+                </form>
+                <div id="generatedImage" class="mt-4"></div>
+            </div>
+
+            <div class="col-md-6">
+                <h4>Image Dorking (Search)</h4>
+                <form id="dorkingForm">
+                    <div class="form-group">
+                        <label for="dorkQuery">Search query:</label>
+                        <input type="text" class="form-control" id="dorkQuery" placeholder="Enter search term">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Search</button>
+                </form>
+                <div id="dorkingResults" class="mt-4"></div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <h4>Chat with AI</h4>
+                <form id="chatForm">
+                    <div class="form-group">
+                        <label for="chatQuery">Enter your message:</label>
+                        <input type="text" class="form-control" id="chatQuery" placeholder="Ask something">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Send</button>
+                </form>
+                <div id="chatResponse" class="mt-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Handle image generation
+        document.getElementById('generateForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const query = document.getElementById('query').value;
+            fetch('/generate', {
+                method: 'POST',
+                body: new URLSearchParams({ query }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.image_path) {
+                    document.getElementById('generatedImage').innerHTML = `<img src="${data.image_path}" class="img-fluid" alt="Generated Image">`;
+                } else {
+                    document.getElementById('generatedImage').textContent = 'Error generating image: ' + data.error;
+                }
+            });
+        });
+
+        // Handle image search (Dorking)
+        document.getElementById('dorkingForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const query = document.getElementById('dorkQuery').value;
+            fetch('/dorking', {
+                method: 'POST',
+                body: new URLSearchParams({ query }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                let results = '<h5>Image Results:</h5>';
+                data.image_urls.forEach(url => {
+                    results += `<img src="${url}" class="img-thumbnail mr-2" style="width: 150px;">`;
+                });
+                document.getElementById('dorkingResults').innerHTML = results || 'No images found.';
+            });
+        });
+
+        // Handle AI chat
+        document.getElementById('chatForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const query = document.getElementById('chatQuery').value;
+            fetch('/chat', {
+                method: 'POST',
+                body: new URLSearchParams({ query }),
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('chatResponse').textContent = 'AI Response: ' + (data.ai_response || data.error);
+            });
+        });
+    </script>
+</body>
+</html>

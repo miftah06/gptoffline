@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Search and Generation</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        h1, h2 {
+            margin-bottom: 20px;
+        }
+        .result-container {
+            margin-top: 20px;
+        }
+        .result-image {
+            max-width: 100%;
+            height: auto;
+        }
+        #progress-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            margin: 10px 0;
+            display: none; /* Initially hidden */
+        }
+        #progress-bar {
+            width: 0%;
+            height: 20px;
+            background-color: #007BFF;
+        }
+        .text-danger {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mt-5 text-center">Image Search and Generation</h1>
+        <header>
+			<p>Generated image:</p>
+			<iframe src="static/images.html" title="Image Gallery" style="width: 100%; height: 150px; border: none;"></iframe>
+		</header>
+        <!-- Search Form -->
+        <form id="searchForm">
+            <div class="form-group">
+                <label for="search_query">Enter Search Query:</label>
+                <input type="text" class="form-control" id="search_query" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Search Images</button>
+        </form>
+        
+        <hr>
+
+        <!-- Generate Image Form -->
+        <form id="generateForm">
+            <div class="form-group">
+                <label for="image_prompt">Enter Image Description:</label>
+                <input type="text" class="form-control" id="image_prompt" required>
+            </div>
+            <div id="progress-container">
+                <div id="progress-bar"></div>
+            </div>
+            <button type="submit" class="btn btn-secondary">Generate Image</button>
+        </form>
+
+        <div class="result-container" id="resultContainer"></div>
+
+        <!-- Sharpen Image Section -->
+        <h2 class="mt-5">Sharpen Image</h2>
+        <form id="sharpenForm">
+            <div class="form-group">
+                <label for="image_url">Enter Image URL:</label>
+                <input type="text" class="form-control" id="image_url" required>
+            </div>
+            <button type="submit" class="btn btn-success">Sharpen Image</button>
+        </form>
+
+        <hr>
+
+        <!-- Chat with AI Section -->
+        <h2 class="mt-5">Chat with AI</h2>
+        <form id="chatForm">
+            <div class="form-group">
+                <label for="chat_query">Enter your query:</label>
+                <input type="text" class="form-control" id="chat_query" required>
+            </div>
+            <button type="submit" class="btn btn-info">Send to AI</button>
+        </form>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script>
+        // Function to format error messages
+        function formatTextWithLineBreaks(text) {
+            return text.replace(/\n/g, '<br>');
+        }
+
+        // AJAX for searching images
+        $('#searchForm').on('submit', async function (e) {
+            e.preventDefault();
+            const query = $('#search_query').val();
+            const response = await fetch('/dorking', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({ 'query': query })
+            });
+
+            const result = await response.json();
+
+            if (result.image_urls) {
+                $('#resultContainer').html('<h3>Search Results:</h3>');
+                result.image_urls.forEach(url => {
+                    $('#resultContainer').append(`
+                        <a href="${url}" target="_blank" class="result-image">
+                            <img src="${url}" class="result-image img-thumbnail" alt="Image">
+                        </a>
+                    `);
+                });
+            } else {
+                $('#resultContainer').html(`<p class="text-danger">${formatTextWithLineBreaks(result.error)}</p>`);
+            }
+        });
+
+        // AJAX for generating images
+        $('#generateForm').on('submit', async function (e) {
+            e.preventDefault();
+            const prompt = $('#image_prompt').val();
+
+            // Show progress bar and reset its width
+            $('#progress-container').show();
+            $('#progress-bar').width('0%');
+
+            const response = await fetch('/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({ 'query': prompt })
+            });
+
+            // Simulate progress for demonstration (optional)
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                if (progress < 100) {
+                    progress += 10; // Increment progress
+                    $('#progress-bar').width(progress + '%');
+                } else {
+                    clearInterval(progressInterval);
+                }
+            }, 400); // Progress ticks every 400ms
+
+            const result = await response.json();
+            clearInterval(progressInterval); // Clear the interval when done
+            $('#progress-bar').width('100%'); // Set to finished
+
+            // Check for result and display
+            if (result.image_path) {
+                $('#resultContainer').append(`<h3>Generated Image:</h3><img src="${result.image_path}" class="result-image img-thumbnail" alt="Generated Image">`);
+            } else {
+                $('#resultContainer').append(`<p class="text-danger">${formatTextWithLineBreaks(result.error)}</p>`);
+            }
+            // Hide progress bar after completion
+            $('#progress-container').hide();
+        });
+
+        // AJAX for sharpening images
+        $('#sharpenForm').on('submit', async function (e) {
+            e.preventDefault();
+            const imageUrl = $('#image_url').val();
+
+            const response = await fetch('/sharpen_image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({ 'image_url': imageUrl })
+            });
+
+            const result = await response.json();
+            if (result.sharpened_image_url) {
+                $('#resultContainer').append(`
+                    <h3>Sharpened Image:</h3>
+                    <img src="${result.sharpened_image_url}" class="result-image img-thumbnail" alt="Sharpened Image">
+                `);
+            } else {
+                $('#resultContainer').append(`<p class="text-danger">${formatTextWithLineBreaks(result.error)}</p>`);
+            }
+        });
+
+        // AJAX for chatting with AI
+        $('#chatForm').on('submit', async function (e) {
+            e.preventDefault();
+            const query = $('#chat_query').val();
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({ 'query': query })
+            });
+
+            const result = await response.json();
+            if (result.response) { // Only get 'response' from the result
+                $('#resultContainer').append(`<h3>AI Response:</h3><p>${formatTextWithLineBreaks(result.response)}</p>`);
+            } else {
+                $('#resultContainer').append(`<p class="text-danger">${formatTextWithLineBreaks(result.error)}</p>`);
+            }
+        });
+    </script>
+</body>
+</html>
